@@ -1,6 +1,7 @@
 from model.AbstractBase import TimestampMixin
 from tortoise import fields
-
+from datetime import date
+from pydantic import BaseModel
 class Schedule(TimestampMixin):
     schedule_id = fields.IntField(pk=True)
     schedule_date = fields.DateField()
@@ -12,3 +13,12 @@ class Schedule(TimestampMixin):
     class Meta:
         table = "schedule"
         table_description = "This table is used to store the schedules of the events."
+
+class ScheduleIn(BaseModel):
+    schedule_date:date
+    schedule_place:str
+    schedule_title:str
+    schedule_description:str
+    user_id:int
+    class Config:
+        orm_mode = True

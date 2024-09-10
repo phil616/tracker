@@ -16,6 +16,7 @@ from model.RoleScope import RoleScope
 from model.UserRole import UserRole
 from core.cache import MemStorage
 from lib.hash import hash_util
+import pytz
 
 user_scopes = {
     "user:read" : "Read user information",
@@ -56,8 +57,8 @@ def create_access_token(data: Dict) -> str:
     2. "scope" (Permissions)  looks like [<...>, <...>]
     """
     token_data = data.copy()
-    expire = datetime.now() + timedelta(minutes=config.JWT_ACCESS_EXPIRE_MINUTES)  # JWT过期分钟 = 当前时间 + 过期时间
-    iat = datetime.now()
+    expire = datetime.now(pytz.utc) + timedelta(minutes=config.JWT_ACCESS_EXPIRE_MINUTES)  # JWT过期分钟 = 当前时间 + 过期时间
+    iat = datetime.now(pytz.utc)
     jti = uuid.uuid4().hex
     token_data.update(
         {
@@ -72,7 +73,7 @@ def create_access_token(data: Dict) -> str:
         key=config.JWT_SECRET_KEY,      # key for signature, usually a secret
         algorithm=config.JWT_ALGORITHM  # default is HS256
     )
-    log.debug(f"a jwt token is created with {token_data} at {iat}, expire at {expire}")
+    log.debug(f"a jwt token is created with {str(token_data)} at {str(iat)}, expire at {str(expire)}")
     return jwt_token
 
 
@@ -105,17 +106,23 @@ async def check_permissions(
     payload = None
     try:
         payload = jwt.decode(token, config.JWT_SECRET_KEY, algorithms=[config.JWT_ALGORITHM])
-        log.debug(f"a payload has been decoded from token: {payload}")
+        log.debug(f"[PAYLOAD SUCCESS] a payload has been decoded from token: {payload}")
         runtime_state.set_value(payload.get("sub"),True)
         if not payload:
             raise HTTPException(401, "Invalid certification", {"WWW-Authenticate": f"Bearer {token}"})
     except jwt.ExpiredSignatureError:
+        log.error("token has expired")
         raise HTTPException("Certification has expired", {"WWW-Authenticate": f"Bearer {token}"})
     except jwt.InvalidTokenError:
+        log.error("token is invalid")
         raise HTTPException("Certification parse error", {"WWW-Authenticate": f"Bearer {token}"})
+    except jwt.exceptions.ImmatureSignatureError:
+        log.error("token is not yet valid")
+        raise HTTPException("Certification is not yet valid", {"WWW-Authenticate": f"Bearer {token}"})
     except jwt.PyJWTError:
+        log.error("token parse failed")
         raise HTTPException("Certification parse failed", {"WWW-Authenticate": f"Bearer {token}"})
-    
+
     user_requested_scope = payload.get("scope")
 
 

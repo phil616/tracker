@@ -13,8 +13,8 @@
 
 ## 部署支撑
 
-1. Docker Mirrors
-2. Github Actions [frontend, backend]
-3. Server: Nginx, Docker
-4. Subdomain: tracker.domain.com
-5. SSL Cloudflare
+1. Docker Mirrors - D
+2. Github Actions [frontend, backend] - D
+3. Server: Nginx, Docker - D
+4. Subdomain: tracker.domain.com - D
+5. SSL Cloudflare - D automate by cloudflare

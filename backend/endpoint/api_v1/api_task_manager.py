@@ -2,7 +2,10 @@ from response.std import URFRouter
 from model.Task import Task,TaskSchema,TaskResponse
 from datetime import datetime
 from typing import Union
-task_router = URFRouter(prefix="/task")
+from fastapi import Security
+from core.authorize import check_permissions
+
+task_router = URFRouter(prefix="/task", dependencies=[Security(check_permissions, scopes=["user:read", "user:write"])])
 
 @task_router.get("/all")
 async def get_all_tasks()->list[TaskResponse]:
@@ -47,4 +50,12 @@ async def get_task_by_date(date_start:datetime, date_end:datetime) -> list[TaskR
 
     return tasks_by_date
 
+
+@task_router.get("/task/cancel")
+async def cancel_task(id:int):
+    task_obj = await Task.filter(task_id=id).first()
+    task_obj.task_status = 4
+    await task_obj.save()
+
+    return {"message": "Task cancelled successfully"}
 

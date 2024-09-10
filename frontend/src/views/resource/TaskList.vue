@@ -86,6 +86,11 @@ export default {
             this.$router.push({name: "Task", query: {id: item.task_id}})
         },
         deleteTask(item){
+            http.get("/task/cancel?id="+item.task_id).then(response => {
+                console.log(response.data)
+                alert("Task Cancelled successfully")
+            })
+            this.fetchTasks()
             console.log(item)
         },
         formatDateToISO(dateString,timeString) {
