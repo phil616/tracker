@@ -65,7 +65,7 @@ jobs:
             source ~/.bashrc
             ls -l
             rm -rf tracker
-            git clone https://github.com/phil616/tracker.git
+            git clone https://github.mirror.greenshadecapital.com/phil616/tracker.git
             cd tracker
             su ${{ secrets.SERVER_USER }}
 
