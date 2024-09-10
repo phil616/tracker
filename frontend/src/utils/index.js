@@ -41,6 +41,7 @@ function logout() {
 }
 
 function getUserId(){
+    checkAuthorizaion()
     const token = sessionStorage.getItem("token");
     if (token) {
         const decodedToken = jwtDecode(token);
