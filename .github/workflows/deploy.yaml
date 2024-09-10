@@ -1,0 +1,73 @@
+name: "Deploy Backend Pages"
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use NodeJS 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Set Frontend Env
+        run: |
+          echo 'VUE_APP_API=${{ secrets.VUE_APP_API}}' >> $GITHUB_ENV
+
+      - name: Install Frontend dependencies
+        run: |
+          cd frontend
+          npm install 
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+      
+      - name: Deploy Frontend to Server
+        uses: easingthemes/ssh-deploy@v2.1.5
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_PRIVATE_KEY }}
+          REMOTE_HOST: ${{ secrets.SERVER_IP }}
+          REMOTE_USER: ${{ secrets.SERVER_USER }}
+          ARGS: "-avz --delete"
+          SOURCE: "frontend/dist"
+          TARGET: "/var/www/tracker"
+
+      - name: Run remote scripts
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USERNAME }}
+          key: ${{ secrets.REMOTE_PRIVATE_KEY }}
+          script: |
+            nginx -s reload
+            echo 'export SUPERUSER=${{ secrets.SYS_SUPERUSER }}' >> ~/.bashrc
+            echo 'export SUPERPASS=${{ secrets.SYS_SUPERPASS }}' >> ~/.bashrc
+            echo 'export SUPEREMAIL=${{ secrets.SYS_SUPEREMAIL }}' >> ~/.bashrc
+            echo 'export SMTP_HOST=${{ secrets.SYS_SMTP_HOST }}' >> ~/.bashrc
+            echo 'export SMTP_PORT=${{ secrets.SYS_SMTP_PORT }}' >> ~/.bashrc
+            echo 'export SMTP_USER=${{ secrets.SYS_SMTP_USER }}' >> ~/.bashrc
+            echo 'export SMTP_PASSWORD=${{ secrets.SYS_SMTP_PASS }}' >> ~/.bashrc
+            echo 'export EMAILS_FROM_EMAIL=${{ secrets.SYS_SMTP_FROM }}' >> ~/.bashrc
+            echo 'export JWT_SECRET_KEY=${{ secrets.SYS_JWT_SECRET }}' >> ~/.bashrc
+
+            source ~/.bashrc
+            ls -l
+            rm -rf tracker
+            git clone https://github.com/phil616/tracker.git
+            cd tracker
+            su ${{ secrets.SERVER_USER }}
+
+            bash production_build.sh
+          

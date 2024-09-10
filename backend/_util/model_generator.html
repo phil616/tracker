@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Tortoise Model Generator</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+  <script src="https://unpkg.com/markdown-it/dist/markdown-it.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <style>
+    .markdown-body {
+      background-color: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <v-app>
+        <template>
+            <v-form ref="form" v-model="valid">
+
+              <v-container>
+                <h3 class="text-center my-5 text-h3">表设置</h3>
+                <v-row>
+                    <v-col cols="12">
+                        <v-text-field v-model="tableName" label="表名" :rules="[(v) => !!v || '表名是必填的']" required></v-text-field>
+                    </v-col>
+                </v-row>
+                <v-row>
+                    <v-col cols="12">
+                        <v-text-field v-model="tableComment" label="表注释"></v-text-field>
+                    </v-col>
+                </v-row>
+                <h3 class="text-center my-5 text-h3">字段列表</h3>
+
+                <v-row v-for="(field, index) in fields" :key="index">
+                  <v-col cols="12" md="2">
+                    <v-text-field
+                      v-model="field.name"
+                      label="字段名称"
+                      :rules="[(v) => !!v || '字段名称是必填的']"
+                      required
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="2">
+                    <v-select
+                      v-model="field.type"
+                      :items="['INT', 'CHAR', 'TEXT', 'DATE', 'FLOAT', 'DATE_AUTO_NOW','DATE_AUTO_NOW_ADD']"
+                      label="类型"
+                      :rules="[(v) => !!v || '类型是必填的']"
+                      required
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" md="1">
+                    <v-text-field
+                      v-model="field.length"
+                      label="长度"
+                      type="number"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="1">
+                    <v-checkbox
+                      v-model="field.isNullable"
+                      label="允许为空"
+                    ></v-checkbox>
+                  </v-col>
+                  <v-col cols="12" md="1">
+                    <v-checkbox
+                      v-model="field.enableDefault"
+                      label="使用默认"
+                    ></v-checkbox>
+                  </v-col>
+                  <v-col cols="12" md="1">
+                    <v-checkbox
+                      v-model="field.isIndex"
+                      label="是否为索引"
+                    ></v-checkbox>
+                  </v-col>
+                  <v-col cols="12" md="2">
+                    <v-select
+                      v-model="field.primaryKeyType"
+                      :items="['NONE', 'PRIMARY KEY', 'UNIQUE']"
+                      label="主键类型"
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" md="2">
+                    <v-text-field
+                      v-model="field.comment"
+                      label="注释"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" md="1">
+                    <v-btn icon @click="removeField(index)">
+                      <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                  </v-col>
+                </v-row>
+                <v-row>
+                  <v-col cols="12">
+                    <v-btn color="primary" @click="addField">增加行</v-btn>
+                    <v-btn color="success" @click="submitForm">提交</v-btn>
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-form>
+            <h3 class="text-center my-5 text-h3">Render Area</h3>
+            <v-container>
+                <v-textarea label="Render Area" v-model="tortoiseModel"></v-textarea>
+            </v-container>
+          </template>
+
+    </v-app>
+  </div>
+
+  
+<script>
+    new Vue({
+      el: '#app',
+      vuetify: new Vuetify(),
+      data() {
+    return {
+      valid: false,
+      tableName: '',
+      tableComment: '',
+      fields: [
+        {
+          name: '',
+          type: '',
+          length: '',
+          isNullable: false,
+          enableDefault: false,
+          isIndex: false,
+          primaryKeyType: 'NONE',
+          comment: '',
+        },
+      ],
+      tortoiseModel: '',
+    };
+  },
+  methods: {
+    addField() {
+      this.fields.push({
+        name: '',
+        type: '',
+        length: '',
+        isNullable: false,
+        enableDefault: false,
+        isIndex: false,
+        primaryKeyType: 'NONE',
+        comment: '',
+      });
+    },
+    removeField(index) {
+      this.fields.splice(index, 1);
+    },
+    submitForm() {
+      if (this.$refs.form.validate()) {
+        
+        this.generateTortoiseModel();
+        console.log(this.fields);
+      }
+    },
+    generateTortoiseModel() {
+        let model = '';
+        const initCode = `from tortoise import fields, Model\n\nclass ${this.tableName}(Model):\n`;
+        model += initCode;
+        for (let i = 0; i < this.fields.length; i++) {
+          const field = this.fields[i];
+          let fieldCode = `    ${field.name} = fields.`;
+          switch (field.type) {
+            case 'INT':
+              fieldCode += 'IntField(';
+              break;
+            case 'CHAR':
+              fieldCode += 'CharField(';
+              break;
+            case 'TEXT':
+              fieldCode += 'TextField(';
+              break;
+            case 'DATE':
+              fieldCode += 'DateField(';
+              break;
+            case 'FLOAT':
+              fieldCode += 'FloatField(';
+              break;
+            case 'DATE_AUTO_NOW':
+              fieldCode += 'DatetimeField(auto_now=True,';
+              break;
+            case 'DATE_AUTO_NOW_ADD':
+              fieldCode += 'DatetimeField(auto_now_add=True,';
+              break;
+            default:
+              break;
+          }
+          let paramList = [];
+          if (!field.length && field.type === 'CHAR'){
+            field.length = 255; // set a default length for char field
+          }
+          if (field.length) {
+            paramList.push(`max_length=${field.length}`);
+          }
+          if (field.isNullable) {
+            paramList.push('null=True');
+          }
+          if (field.enableDefault) {
+            let defalutVal = "...";
+            // defalut val is enabled
+          }
+          if (field.isIndex) {
+            if (field.type == 'DATE_AUTO_NOW' || field.type == 'DATE_AUTO_NOW_ADD' || field.type == 'DATE'){
+                // do not add index for date field
+            } else {
+              paramList.push('index=True');
+            }
+          }
+          if (field.primaryKeyType === 'PRIMARY KEY') {
+            paramList.push('pk=True');
+          } else if (field.primaryKeyType === 'UNIQUE') {
+            paramList.push('unique=True');
+          }
+          if (field.comment) {
+            paramList.push(`description='${field.comment}'`);
+          }
+          if (paramList.length) {
+            fieldCode += `${paramList.join(', ')})`;
+          } else {
+            fieldCode += ')';
+          }
+          model += fieldCode + '\n';     
+          model += `    class Meta:\n        table = '${this.tableName}'\n        table_description = '${this.tableComment}'\n`;
+        }
+        this.tortoiseModel = model;
+    },
+  },
+})
+  </script>
+</body>
+</html>
