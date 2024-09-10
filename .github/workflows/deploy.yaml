@@ -47,9 +47,9 @@ jobs:
       - name: Run remote scripts
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.REMOTE_HOST }}
-          username: ${{ secrets.REMOTE_USERNAME }}
-          key: ${{ secrets.REMOTE_PRIVATE_KEY }}
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_PRIVATE_KEY }}
           script: |
             nginx -s reload
             echo 'export SUPERUSER=${{ secrets.SYS_SUPERUSER }}' >> ~/.bashrc
